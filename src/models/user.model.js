@@ -57,12 +57,12 @@ userSchema.pre("save", async function (next) {
   next();
 });
 
-userSchema.methods.isPasswordCorrect = async function () {
-  return await bcrypt.compare(myPlaintextPassword, hash);
+userSchema.methods.isPasswordCorrect = async function (password) {
+  return await bcrypt.compare(password, this.password);
 };
 
-userSchema.methods.generateAccessToken = function () {
-  return jwt.sign(
+userSchema.methods.generateAccessToken = async function () {
+  return await jwt.sign(
     {
       id: this._id,
       username: this.username,
@@ -70,21 +70,16 @@ userSchema.methods.generateAccessToken = function () {
       fullName: this.fullName,
     },
     process.env.ACCESS_TOKEN_PRIVATE_KEY,
-    { algorithm: "RS256" },
     { expiresIn: process.env.ACCESS_TOKEN_EXPIRY },
   );
 };
 
-userSchema.methods.generateRefreshToken = function () {
-  return jwt.sign(
+userSchema.methods.generateRefreshToken = async function () {
+  return await jwt.sign(
     {
       id: this._id,
-      username: this.username,
-      email: this.email,
-      fullName: this.fullName,
     },
     process.env.REFRESH_TOKEN_PRIVATE_KEY,
-    { algorithm: "RS256" },
     { expiresIn: process.env.REFRESH_TOKEN_EXPIRY },
   );
 };
