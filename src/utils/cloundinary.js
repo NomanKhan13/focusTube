@@ -1,4 +1,5 @@
 import { v2 as cloudinary } from "cloudinary";
+import { extractPublicId } from "cloudinary-build-url";
 import fs from "fs";
 
 cloudinary.config({
@@ -21,7 +22,13 @@ const uploadCloudinary = async function (localFilePath) {
   }
 };
 
-export { uploadCloudinary };
+export const deleteImageCloudinary = async (cloudinaryURL) => {
+  if (!cloudinaryURL) return null;
+  const publicId = extractPublicId(cloudinaryURL);
+  await cloudinary.uploader.destroy(publicId);
+};
+
+export { uploadCloudinary, deleteImageCloudinary };
 
 // )(async function () {
 //   // Configuration

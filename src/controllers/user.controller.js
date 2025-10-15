@@ -2,7 +2,10 @@ import isEmail from "validator/lib/isEmail.js";
 import isStrongPassword from "validator/lib/isStrongPassword.js";
 import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
-import { uploadCloudinary } from "../utils/cloundinary.js";
+import {
+  deleteImageCloudinary,
+  uploadCloudinary,
+} from "../utils/cloundinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncWrapper } from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken";
@@ -233,6 +236,121 @@ export const logoutUser = asyncWrapper(async (req, res) => {
    * We access the user and set their refresh token to null in DB.
    * We clear the cookies from client using res.clearCookie(nameOfCookie, options) method.
    */
+});
+
+export const getUserDetails = asyncWrapper(async (req, res) => {
+  res
+    .status(200)
+    .json(new ApiResponse(200, "User data fetched successfully", req.user));
+});
+
+export const changeCurrentPassword = asyncWrapper(async (req, res) => {
+  /**
+   * 0. verifyJWT middleware will help in authorizing user
+   * 1. Get field from user and validate them
+   * 2. Get user from DB and validate it
+   * 3. check oldPassword
+   * 4. save in DB and send res to user
+   */
+
+  const { oldPassword, newPassword, confirmNewPassword } = req.body;
+
+  if (
+    [oldPassword, newPassword, confirmNewPassword].some(
+      (param) => !param.trim(),
+    )
+  ) {
+    throw new ApiError(400, "All feilds are required");
+  }
+  if (newPassword !== confirmNewPassword) {
+    throw new ApiError(
+      400,
+      "New password and confirm new password should be same",
+    );
+  }
+
+  const user = await User.findById(req.user.id).select("-refreshToken");
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  // we already have a method in User model, how can you even do this? user.password is hashed by bcrypt
+  // if (user.password !== newPassword) {
+  // throw new ApiError(401, "Current password is invalid");
+  // }
+
+  const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+  if (!isPasswordCorrect) {
+    throw new ApiError(401, "Invalid old password");
+  }
+
+  user.password = newPassword;
+  await User.save();
+
+  res.status(200).json(new ApiResponse(200, "Password changed successfully"));
+});
+
+export const changeCurrentEmail = asyncWrapper(async (req, res) => {
+  const { newEmail } = req.email;
+  if (!isEmail(newEmail)) {
+    throw new ApiError("Invalid email");
+  }
+
+  const user = User.findByIdAndUpdate(
+    req.user.id,
+    { $set: { email: newEmail } },
+    { new: true },
+  ).select("-password -refreshToken");
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, "Email updated successfully", user));
+});
+
+export const changeCurrentAvatar = asyncWrapper(async (req, res) => {
+  const avatarLocalPath = req.file.avatar.path;
+
+  if (!avatarLocalPath) {
+    throw new ApiError(400, "New avatar image not provided");
+  }
+  const uploadedImage = await uploadCloudinary(avatarLocalPath);
+  if (!uploadedImage) {
+    throw new ApiError(400, "Avatar not uploaded");
+  }
+  deleteImageCloudinary(req.user.avatar);
+
+  const user = await User.findByIdAndUpdate(
+    req.user.id,
+    { $set: { avatar: uploadedImage.secure_url } },
+    { new: true },
+  ).select("-password -refreshToken");
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, "Avatar updated sucessfully", user));
+});
+
+export const changeCurrentCover = asyncWrapper(async (req, res) => {
+  const coverImageLocalPath = req.file.coverImage.path;
+
+  if (!coverImageLocalPath) {
+    throw new ApiError(400, "New cover image not provided");
+  }
+  const uploadedImage = await uploadCloudinary(coverImageLocalPath);
+  if (!uploadedImage) {
+    throw new ApiError(400, "Cover image not uploaded");
+  }
+  deleteImageCloudinary(req.user.coverImage);
+
+  const user = await User.findByIdAndUpdate(
+    req.user.id,
+    { $set: { coverImage: uploadedImage.secure_url } },
+    { new: true },
+  ).select("-password -refreshToken");
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, "Cover image updated sucessfully", user));
 });
 
 export const generateNewAccessToken = asyncWrapper(async (req, res) => {
