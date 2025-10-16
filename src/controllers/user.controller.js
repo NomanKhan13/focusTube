@@ -353,6 +353,75 @@ export const changeCurrentCover = asyncWrapper(async (req, res) => {
     .json(new ApiResponse(200, "Cover image updated sucessfully", user));
 });
 
+export const getUserChannelProfile = asyncWrapper(async (req, res) => {
+  const username = req.params.username;
+  if (!username?.trim()) {
+    throw new ApiError("Username required to fetch details");
+  }
+
+  /** 
+   * we can do this but we will anyways use aggregation pipeline, so we should use aggregation pipelines directly
+      const user = await User.findOne({ username }).select(
+        "-password -refreshToken -createdAt -updatedAt",
+      );
+      if (!user) {
+        throw new ApiError(404, "User not found");
+      }
+  */
+
+  const channel = await User.aggregate([
+    { $match: { username: username?.toLowerCase() } }, // get user data based on username - what user match to username?
+    {
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "channel",
+        as: "subscribers",
+      },
+    }, // get user's subscriber - lookup for documents(in subscriptions) where I am as a channel.
+    {
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "subscriber",
+        as: "subscribedTo",
+      },
+    }, // lookup for documents(in subscriptions) where I am as a subscriber.
+    {
+      $addFields: {
+        subscribedToMe: { $size: "$subscribers" },
+        subscribedToOthers: { $size: "$subscribedTo" },
+        isSubscribed: {
+          $cond: {
+            if: { $in: [req?.user?.id, "$subscribers.subscribe"] },
+            then: true,
+            else: false,
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        fullName: 1,
+        username: 1,
+        avatar: 1,
+        coverImage: 1,
+        subscribedToMe: 1,
+        subscribedToOthers: 1,
+        isSubscribed: 1,
+      },
+    },
+  ]);
+
+  if (!channel) {
+    throw new ApiError(404, "Channel not found");
+  }
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, "Channel fetched successfully", channel[0]));
+});
+
 export const generateNewAccessToken = asyncWrapper(async (req, res) => {
   /**
    * When user will get 401 they will hit this endpoint.
