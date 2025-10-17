@@ -5,7 +5,9 @@ import {
   changeCurrentEmail,
   changeCurrentPassword,
   generateNewAccessToken,
+  getUserChannelProfile,
   getUserDetails,
+  getWatchHistory,
   loginUser,
   logoutUser,
   registerUser,
@@ -36,5 +38,9 @@ router
 router
   .route("/change-cover")
   .patch(verifyJWT, upload.single("coverImage"), changeCurrentCover);
+
+router.route("/c/:username").get(verifyJWT, getUserChannelProfile);
+
+router.route("history").get(verifyJWT, getWatchHistory);
 
 export { router };

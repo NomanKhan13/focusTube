@@ -9,6 +9,7 @@ import {
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncWrapper } from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 // Forgot to add asyncWrapper here, adding it now to handle errors properly.
 // What this wrapper fn does is takes a fn as input and runs it inside a try catch block and if any error occurs it passes the error to next() fn which is the express error handling middleware.
@@ -420,6 +421,58 @@ export const getUserChannelProfile = asyncWrapper(async (req, res) => {
   res
     .status(200)
     .json(new ApiResponse(200, "Channel fetched successfully", channel[0]));
+});
+
+export const getWatchHistory = asyncWrapper(async (req, res) => {
+  const { id } = req.user;
+
+  const user = await User.aggregate([
+    {
+      $match: { _id: new mongoose.Types.ObjectId(id) },
+    },
+    {
+      $lookup: {
+        from: "videos",
+        localField: "watchHistory",
+        foreignField: "_id",
+        as: "watchHistory",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              pipeline: [
+                {
+                  $project: {
+                    fullName: 1,
+                    avatar: 1,
+                    username: 1,
+                  },
+                },
+                {
+                  $addFields: {
+                    $first: "$owner",
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        "Watch history fetched successfully",
+        user[0].watchHistory,
+      ),
+    );
 });
 
 export const generateNewAccessToken = asyncWrapper(async (req, res) => {
