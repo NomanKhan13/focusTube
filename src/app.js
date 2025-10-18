@@ -14,6 +14,14 @@ app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express.static("public"));
 app.use(cookieParser());
+app.use((req, res, next) => {
+  for (const key in req.body) {
+    if (typeof req.body[key] === "string" && req.body[key] !== "password") {
+      req.body[key] = req.body[key].trim();
+    }
+  }
+  next();
+});
 
 import { router as userRouter } from "./routes/user.routes.js";
 

@@ -22,7 +22,7 @@ const uploadCloudinary = async function (localFilePath) {
   }
 };
 
-export const deleteImageCloudinary = async (cloudinaryURL) => {
+const deleteImageCloudinary = async (cloudinaryURL) => {
   if (!cloudinaryURL) return null;
   const publicId = extractPublicId(cloudinaryURL);
   await cloudinary.uploader.destroy(publicId);

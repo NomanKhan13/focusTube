@@ -121,7 +121,7 @@ export const loginUser = asyncWrapper(async (req, res) => {
   }
   const isPasswordValid = await user.isPasswordCorrect(password); // you used user and not User because these methods were added by you and not mongoose.
   if (!isPasswordValid) {
-    throw new ApiError(401, "Password is incorrect");
+    throw new ApiError(401, "Invalid credentials");
   }
 
   const accessToken = await user.generateAccessToken();
@@ -240,6 +240,7 @@ export const logoutUser = asyncWrapper(async (req, res) => {
 });
 
 export const getUserDetails = asyncWrapper(async (req, res) => {
+  console.log("User details", req.user);
   res
     .status(200)
     .json(new ApiResponse(200, "User data fetched successfully", req.user));
@@ -257,9 +258,10 @@ export const changeCurrentPassword = asyncWrapper(async (req, res) => {
   const { oldPassword, newPassword, confirmNewPassword } = req.body;
 
   if (
-    [oldPassword, newPassword, confirmNewPassword].some(
-      (param) => !param.trim(),
-    )
+    [oldPassword, newPassword, confirmNewPassword].some((param) => {
+      console.log(!isStrongPassword(param));
+      return !isStrongPassword(param);
+    })
   ) {
     throw new ApiError(400, "All feilds are required");
   }
@@ -286,18 +288,18 @@ export const changeCurrentPassword = asyncWrapper(async (req, res) => {
   }
 
   user.password = newPassword;
-  await User.save();
+  await user.save();
 
   res.status(200).json(new ApiResponse(200, "Password changed successfully"));
 });
 
 export const changeCurrentEmail = asyncWrapper(async (req, res) => {
-  const { newEmail } = req.email;
+  const { newEmail } = req.body;
   if (!isEmail(newEmail)) {
     throw new ApiError("Invalid email");
   }
 
-  const user = User.findByIdAndUpdate(
+  const user = await User.findByIdAndUpdate(
     req.user.id,
     { $set: { email: newEmail } },
     { new: true },
@@ -309,7 +311,8 @@ export const changeCurrentEmail = asyncWrapper(async (req, res) => {
 });
 
 export const changeCurrentAvatar = asyncWrapper(async (req, res) => {
-  const avatarLocalPath = req.file.avatar.path;
+  console.log(req.file);
+  const avatarLocalPath = req.file.path;
 
   if (!avatarLocalPath) {
     throw new ApiError(400, "New avatar image not provided");
@@ -332,7 +335,7 @@ export const changeCurrentAvatar = asyncWrapper(async (req, res) => {
 });
 
 export const changeCurrentCover = asyncWrapper(async (req, res) => {
-  const coverImageLocalPath = req.file.coverImage.path;
+  const coverImageLocalPath = req.file.path;
 
   if (!coverImageLocalPath) {
     throw new ApiError(400, "New cover image not provided");
@@ -355,8 +358,11 @@ export const changeCurrentCover = asyncWrapper(async (req, res) => {
 });
 
 export const getUserChannelProfile = asyncWrapper(async (req, res) => {
-  const username = req.params.username;
+  const { username } = req.params;
+  console.log(username);
   if (!username?.trim()) {
+    console.log(username);
+
     throw new ApiError("Username required to fetch details");
   }
 
@@ -414,7 +420,7 @@ export const getUserChannelProfile = asyncWrapper(async (req, res) => {
     },
   ]);
 
-  if (!channel) {
+  if (!channel.length) {
     throw new ApiError(404, "Channel not found");
   }
 
@@ -451,18 +457,24 @@ export const getWatchHistory = asyncWrapper(async (req, res) => {
                     username: 1,
                   },
                 },
-                {
-                  $addFields: {
-                    $first: "$owner",
-                  },
-                },
               ],
+            },
+          },
+          {
+            $addFields: {
+              owner: {
+                $first: "$owner",
+              },
             },
           },
         ],
       },
     },
   ]);
+
+  if (!user.length) {
+    throw new ApiError("Watch history doesn't exist");
+  }
 
   res
     .status(200)
