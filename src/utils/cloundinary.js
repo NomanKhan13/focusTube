@@ -22,13 +22,27 @@ const uploadCloudinary = async function (localFilePath) {
   }
 };
 
+const uploadVideoCloudinary = async function (localFilePath) {
+  try {
+    if (!localFilePath) return null;
+    const response = await cloudinary.uploader.upload(localFilePath, {
+      resource_type: "video",
+    });
+    fs.unlinkSync(localFilePath);
+    return response;
+  } catch (error) {
+    fs.unlinkSync(localFilePath);
+    return null;
+  }
+};
+
 const deleteImageCloudinary = async (cloudinaryURL) => {
   if (!cloudinaryURL) return null;
   const publicId = extractPublicId(cloudinaryURL);
   await cloudinary.uploader.destroy(publicId);
 };
 
-export { uploadCloudinary, deleteImageCloudinary };
+export { uploadCloudinary, deleteImageCloudinary, uploadVideoCloudinary };
 
 // )(async function () {
 //   // Configuration
