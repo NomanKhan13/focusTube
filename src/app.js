@@ -34,21 +34,34 @@ app.use("/api/v1/videos", videoRouter);
 
 // MISTAKE - Global Error handler should be at last
 app.use((err, req, res, next) => {
-  console.error(err); // log internally
+  console.error(err); // log full details for developers
 
   if (err instanceof ApiError) {
     return res.status(err.statusCode).json({
       success: false,
       message: err.message,
-      statusCode: err.statusCode,
     });
   }
 
-  // fallback for unexpected errors
-  res.status(500).json({
+  // Handle known Mongoose errors safely
+  if (err.name === "CastError") {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid ID format",
+    });
+  }
+
+  if (err.name === "ValidationError") {
+    return res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+
+  // Default (catch-all)
+  return res.status(500).json({
     success: false,
-    message: "Internal server error",
-    statusCode: 500,
+    message: "Internal Server Error",
   });
 });
 
