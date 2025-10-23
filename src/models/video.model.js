@@ -19,7 +19,6 @@ const videoSchema = new Schema(
       required: true,
       default: 0,
       index: true,
-      immutable: true, // Prevents user or even code from setting it directly
     },
     isPublished: { type: Boolean, default: true, required: true, index: true },
   },

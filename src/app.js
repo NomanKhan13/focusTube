@@ -36,16 +36,20 @@ app.use("/api/v1/videos", videoRouter);
 app.use((err, req, res, next) => {
   console.error(err); // log full details for developers
 
+  // 1️⃣ Handle custom ApiError
   if (err instanceof ApiError) {
     return res.status(err.statusCode).json({
+      statusCode: err.statusCode,
       success: false,
       message: err.message,
+      errors: err.errors || null,
     });
   }
 
   // Handle known Mongoose errors safely
   if (err.name === "CastError") {
     return res.status(400).json({
+      statusCode: 400,
       success: false,
       message: "Invalid ID format",
     });
@@ -53,6 +57,7 @@ app.use((err, req, res, next) => {
 
   if (err.name === "ValidationError") {
     return res.status(400).json({
+      statusCode: 400,
       success: false,
       message: err.message,
     });
@@ -60,6 +65,7 @@ app.use((err, req, res, next) => {
 
   // Default (catch-all)
   return res.status(500).json({
+    statusCode: 500,
     success: false,
     message: "Internal Server Error",
   });

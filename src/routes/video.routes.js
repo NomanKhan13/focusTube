@@ -5,8 +5,8 @@ import {
   getAllVideosOfChannel,
   getVideo,
   publishVideo,
+  updateThumbnail,
   updateVideo,
-  updateVideoViews,
 } from "../controllers/video.controller.js";
 import { verifyJWT } from "../middlewares/verifyJWT.js";
 import { upload } from "../middlewares/multer.middleware.js";
@@ -47,7 +47,12 @@ router
   .delete(verifyJWT, deleteVideo)
   .patch(verifyJWT, updateVideo);
 
-router.route("/:id/views").post(updateVideoViews);
+// router
+//   .route("/update-video/:id")
+//   .patch(upload.single("videoFile"), updateVideo);
+router
+  .route("/update-thumbnail/:id")
+  .patch(upload.single("thumbnail"), updateThumbnail);
 
 router.route("/:id/videos").get(getAllVideosOfChannel);
 

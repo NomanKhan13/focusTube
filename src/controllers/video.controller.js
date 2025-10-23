@@ -151,6 +151,7 @@ export const getVideo = asyncWrapper(async (req, res) => {
    * Mistake 6 - (used $addFeild in lookup)In the users collection, there is no field called owner — that field only exists in the videos collection.
    * Mistake 7 - When using $project, you need to set 1 to prop.
    * Tip: I am adding isSubscribed to owner itself and not video because this feild is not specific to video, its specific with owner
+   * Mongoose does string to ObjectId conversion but sometimes it silently fails.
    */
 
   const { id: videoId } = req.params;
@@ -163,6 +164,11 @@ export const getVideo = asyncWrapper(async (req, res) => {
   }
 
   try {
+    await Video.findByIdAndUpdate(
+      new mongoose.Types.ObjectId(videoId),
+      { $inc: { views: 1 } },
+      { new: true },
+    );
     const video = await Video.aggregate([
       { $match: { _id: new mongoose.Types.ObjectId(videoId) } },
       {
@@ -233,6 +239,7 @@ export const getVideo = asyncWrapper(async (req, res) => {
       .json(new ApiResponse(200, "Video fetched successfully", video[0]));
   } catch (error) {
     if (error instanceof ApiError) throw error;
+    console.log("here");
     if (error.name === "ValidationError")
       throw new ApiError(400, error.message);
     throw new ApiError(500, "Database aggregation error");
@@ -247,6 +254,7 @@ export const deleteVideo = asyncWrapper(async (req, res) => {
     throw new ApiError(400, "Invalid video ID format");
   }
 
+  console.log(videoId);
   try {
     const video = await Video.findById(videoId);
     if (!video) {
@@ -336,7 +344,6 @@ export const updateVideo = asyncWrapper(async (req, res) => {
     throw new ApiError(500, "Internal server Error");
   }
 });
-
 export const updateThumbnail = asyncWrapper(async (req, res) => {
   // Mistake - What are you doing? Anyone can update the video you need to check the owner, where is logic bulding?
   // Mistake - Verify that its the owner then upload on cloudinary else attacker may congest/waste your cloudinary bandwidth
