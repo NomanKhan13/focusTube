@@ -1,18 +1,20 @@
 import express from "express";
+import type { Express } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 
-const app = express();
+const app: Express = express();
 
 const corsConfig = {
   origin: process.env.CORS_ORIGIN,
   credentials: true,
 };
 
-app.use(cors(corsConfig));
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express.static("public"));
+
+app.use(cors(corsConfig));
 app.use(cookieParser());
 app.use((req, res, next) => {
   for (const key in req.body) {
@@ -26,105 +28,18 @@ app.use((req, res, next) => {
 import { router as userRouter } from "./routes/user.routes.js";
 import { router as videoRouter } from "./routes/video.routes.js";
 import { healthChecker } from "./controllers/health.controller.js";
-import { ApiError } from "./utils/ApiError.js";
+import globalErrorHandler from "./middlewares/errorHandler.js";
 
 app.get("/api/v1/heath-check", healthChecker);
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/videos", videoRouter);
 
 // MISTAKE - Global Error handler should be at last
-app.use((err, req, res, next) => {
-  console.error(err); // log full details for developers
-
-  // 1️⃣ Handle custom ApiError
-  if (err instanceof ApiError) {
-    return res.status(err.statusCode).json({
-      statusCode: err.statusCode,
-      success: false,
-      message: err.message,
-      errors: err.errors || null,
-    });
-  }
-
-  // Handle known Mongoose errors safely
-  if (err.name === "CastError") {
-    return res.status(400).json({
-      statusCode: 400,
-      success: false,
-      message: "Invalid ID format",
-    });
-  }
-
-  if (err.name === "ValidationError") {
-    return res.status(400).json({
-      statusCode: 400,
-      success: false,
-      message: err.message,
-    });
-  }
-
-  // Default (catch-all)
-  return res.status(500).json({
-    statusCode: 500,
-    success: false,
-    message: "Internal Server Error",
-  });
-});
+app.use(globalErrorHandler);
 
 export { app };
 
-// prettier-ignore
-
-/*** Below this is just to understand concepts */
-
-/**
- * 
- 
-✈️ Understanding Express Router with an Airport Analogy
-
-Get confidence with Express Router, throw away confusion with this airport analogy.
-
-Step 1 of 2) Imagine we’re building a backend for Ahmedabad Airport (Abad Airport).
-There are two main sections:
-
-    🏠 Domestic flights
-    🌍 International flights
-
-// app.js
-import express from "express";
-import domesticRouter from "./routes/domestic.router.js";
-import internationalRouter from "./routes/international.router.js";
-
-const app = express();
-
-app.use("/abad-airport/domestic", domesticRouter);
-app.use("/abad-airport/international", internationalRouter);
-
-Step 2 of 2) Now, inside domestic.router.js:
-
-import { Router } from "express";
-import { getIndigoFlights, getIndigoFlightById } from "../controllers/indigo.controller.js";
-import { getVistaraFlights } from "../controller/vistara.controller.js"
-
-const router = Router();
-
-// This way, when someone requests: GET "/abad-airport/domestic/indigo/flights" only the domestic router handles it.
-// Similarly if req is GET "/abad-airport/domestic/indigo/flights/:id"
-router.route("/indigo/flights").get(getIndigoFlights);
-router.route("/indigo/flights/:id").get(getIndigoFlightById);
-
-// Just like above for GET "/abad-airport/domestic/vistara/flights"
-router.route("/vistara/flights").get(getVistaraFlights);
-
-export default router;
-
-
-Question - How do you organize your Express routes? A single file or separate routers?
-
-* 
- */
-
-/**
+/*
 
 // ------------------- AUTH ROUTES -------------------
 app.post("/api/v1/auth/register", (req, res) => res.send("Register"));
@@ -202,4 +117,4 @@ app.get("/api/v1/search/suggest", (req, res) => res.send("Search suggestions"));
 // ------------------- HEALTH CHECK -------------------
 app.get("/api/v1/health", (req, res) => res.send("Server is healthy"));
 
- */
+*/

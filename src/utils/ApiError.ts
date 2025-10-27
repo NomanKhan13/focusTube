@@ -1,8 +1,10 @@
 class ApiError extends Error {
-  constructor(statusCode, message) {
+  public readonly statusCode: number;
+  public readonly success: boolean = false;
+  constructor(statusCode: number, message: string) {
     super(message); // by default Error has message property, to access this.error we need this.
     this.statusCode = statusCode;
-    this.success = false;
+    this.name = this.constructor.name;
     Error.captureStackTrace(this, this.constructor);
   }
 }
